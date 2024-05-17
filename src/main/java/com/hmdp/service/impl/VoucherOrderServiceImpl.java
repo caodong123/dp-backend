@@ -10,6 +10,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.SimpleRedisLock;
 import com.hmdp.utils.UserHolder;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -38,9 +41,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Resource
     private ISeckillVoucherService seckillVoucherService;
 
+    @Resource
+    private RedissonClient redissonClient;
+
     // 秒杀优惠券  使用乐观锁
     @Override
-    public Result seckillVoucher(Long voucherId) {
+    public Result seckillVoucher(Long voucherId) throws InterruptedException {
         // 1 根据id查询优惠券
         SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
         if(voucher == null){
@@ -61,9 +67,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         Long id = UserHolder.getUser().getId();
         //获取锁对象
-        SimpleRedisLock lock = new SimpleRedisLock("order:" + id, stringRedisTemplate);
+//        SimpleRedisLock lock = new SimpleRedisLock("order:" + id, stringRedisTemplate);
+        RLock lock = redissonClient.getLock("lock:order" + id);
         // 获取锁
-        Boolean isLocked = lock.tryLock(10L);
+        Boolean isLocked = lock.tryLock(1,10, TimeUnit.SECONDS);
         //获取失败
         if(!isLocked){
             return Result.fail("该用户已经购买过了！");
@@ -74,7 +81,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return proxy.createVoucherOrder(voucherId);
         } finally {
             //释放锁
-            lock.unLock();
+            lock.unlock();
         }
     }
 
