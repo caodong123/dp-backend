@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter;
 @Component
 public class RedisIdWorker {
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
 

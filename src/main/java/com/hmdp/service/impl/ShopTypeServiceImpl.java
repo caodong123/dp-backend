@@ -54,7 +54,7 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
                 .map(JSONUtil::toJsonStr)
                 .collect(Collectors.toList());
 
-        stringRedisTemplate.opsForList().rightPushAll(CACHE_SHOP_TYPE_KEY);
+        stringRedisTemplate.opsForList().rightPushAll(CACHE_SHOP_TYPE_KEY,list);
 
         return Result.ok(typeList);
 
